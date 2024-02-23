@@ -740,7 +740,11 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	 */
 	public function wpau_approve( $user_id ) {
 		if ( get_user_meta( $user_id, 'wp-approve-user-new-registration', true ) ) {
+			// TODO: Setting for automated password creation
+			if ( 1 < 0 ) {
 			wp_new_user_notification( $user_id, null, 'user' );
+			}
+
 			delete_user_meta( $user_id, 'wp-approve-user-new-registration' );
 		}
 
@@ -943,11 +947,19 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	 * @return string
 	 */
 	protected function populate_message( $message, $user ) {
+
+		// TODO: Setting for automated password creation
+		if ( 1 ) {
+			$password = wp_generate_password( 12, false );
+			wp_set_password( $password, $user->ID );
+		}
+
 		$placeholders = array(
 			'BLOG_TITLE' => wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES ),
 			'BLOG_URL'   => home_url(),
 			'LOGINLINK'  => wp_login_url(),
 			'USERNAME'   => $user->user_nicename,
+			'PASSWORD'   => $password
 		);
 
 		if ( is_multisite() ) {
