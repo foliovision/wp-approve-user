@@ -128,6 +128,9 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		$this->hook( 'delete_user' );
 		$this->hook( 'admin_init' );
 
+		$this->hook( 'edd_insert_user' );
+		$this->hook( 'edd_insert_user_args' );
+
 		if ( is_admin() ) {
 			$this->hook( 'views_users' );
 			$this->hook( 'views_users-network', 'views_users' );
@@ -1078,6 +1081,17 @@ Contact details',
 		return $role;
 
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput
+	}
+
+	// Make sure any user registered through EDD is  marked as approved
+	public function edd_insert_user( $user_id ) {
+		update_user_meta( $user_id, 'wp-approve-user', true );
+	}
+
+	// Make sure any user registered through EDD is not marked as unapproved
+	public function edd_insert_user_args( $args ) {
+		remove_action( 'user_register', array( $this, 'user_register' ) );
+		return $args;
 	}
 
 	/**
