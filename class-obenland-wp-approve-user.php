@@ -742,7 +742,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		if ( get_user_meta( $user_id, 'wp-approve-user-new-registration', true ) ) {
 			// TODO: Setting for automated password creation
 			if ( 1 < 0 ) {
-			wp_new_user_notification( $user_id, null, 'user' );
+				wp_new_user_notification( $user_id, null, 'user' );
 			}
 
 			delete_user_meta( $user_id, 'wp-approve-user-new-registration' );
@@ -753,12 +753,22 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			$user     = new WP_User( $user_id );
 			$blogname = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
 
+			$message = $this->populate_message( $this->options['wpau-approve-email'], $user );
+			$headers = array();
+
+			// TODO: Setting for HTML email
+			if ( 1 ) {
+				$message = wpautop( $message );
+				$headers[] = 'Content-Type: text/html; charset=UTF-8';
+			}
+
 			// Send mail.
 			$sent = wp_mail(
 				$user->user_email,
 				/* translators: Blog name. */
 				sprintf( esc_html_x( '[%s] Registration approved', 'Blogname', 'wp-approve-user' ), $blogname ),
-				$this->populate_message( $this->options['wpau-approve-email'], $user )
+				$message,
+				$headers
 			);
 
 			if ( $sent ) {
