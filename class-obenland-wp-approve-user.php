@@ -759,8 +759,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			$message = $this->populate_message( $this->options['wpau-approve-email'], $user );
 			$headers = array();
 
-			// TODO: Setting for HTML email
-			if ( 1 ) {
+			// WP Better Emails takes care of the HTML.
+			if ( ! class_exists( 'WP_Better_Emails' ) ) {
 				$message = wpautop( $message );
 				$headers[] = 'Content-Type: text/html; charset=UTF-8';
 			}
