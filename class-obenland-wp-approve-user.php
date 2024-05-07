@@ -69,6 +69,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			$args = array(
 				'meta_key'   => 'wp-approve-user', //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 				'meta_value' => false, //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'fields'     => 'all_with_meta',   // Get only required fields
 			);
 
 			if ( is_multisite() ) {
