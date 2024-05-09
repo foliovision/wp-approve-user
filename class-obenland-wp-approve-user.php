@@ -107,6 +107,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		$this->hook( 'load-site-users.php', 'map_action2' );
 		$this->hook( 'admin_action_wpau_approve' );
 		$this->hook( 'admin_action_wpau_bulk_approve' );
+		$this->hook( 'admin_action_wpau_decline' );
+		$this->hook( 'admin_action_wpau_bulk_decline' );
 		$this->hook( 'admin_action_wpau_unapprove' );
 		$this->hook( 'admin_action_wpau_bulk_unapprove' );
 		$this->hook( 'admin_action_wpau_update' );
@@ -219,6 +221,25 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 				esc_html__( 'Unapproved', 'wp-approve-users' ),
 				count( $this->unapproved_users )
 			);
+
+			$args = array(
+				'user_status' => 2
+			);
+
+			if ( is_multisite() ) {
+				$args['blog_id'] = is_network_admin() ? 0 : get_current_blog_id();
+			}
+
+			$count_declined_users = get_users( $args );
+
+			$views['declined'] = sprintf(
+				'<a href="%1$s" class="%2$s">%3$s <span class="count">(%4$s)</span></a>',
+				esc_url( add_query_arg( array( 'role' => 'wpau_declined' ), $url ) ),
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				'wpau_declined' === $this->get_role() ? 'current' : '',
+				esc_html__( 'Declined', 'wp-approve-users' ),
+				count( $count_declined_users )
+			);
 		}
 
 		return $views;
@@ -237,10 +258,15 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput
 		$role = empty( $query->query_vars['role'] ) && isset( $_REQUEST['role'] ) ? $_REQUEST['role'] : $query->query_vars['role'];
 
-		if ( 'wpau_unapproved' === $role ) {
+		if ( in_array( $role, array( 'wpau_unapproved', 'wpau_declined' ) ) ) {
 			// Discard the standard Role query.
 			$query->query_vars['role']        = '';
-			$query->query_vars['user_status'] = 1;
+
+			if ( 'wpau_unapproved' === $role ) {
+				$query->query_vars['user_status'] = 1;
+			} else if ( 'wpau_declined' === $role ) {
+				$query->query_vars['user_status'] = 2;
+			}
 
 			// Parse the query again while avoiding the endless loop.
 			remove_filter( 'pre_user_query', array( $this, 'pre_user_query' ) );
@@ -286,7 +312,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 
 				$actions['wpau-unapprove'] = sprintf( '<a class="submitunapprove" href="%1$s">%2$s</a>', esc_url( $url ), esc_html__( 'Unapprove', 'wp-approve-user' ) );
 
-			} else if ( 1 === intval( $user_object->user_status ) ) {
+			} else if ( in_array( intval( $user_object->user_status ), array( 1, 2 ) ) ) {
 
 				// Remove the reset password link as it does not make sense for unapproved or declined users.
 				unset( $actions['resetpassword'] );
@@ -304,6 +330,22 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 				);
 
 				$actions['wpau-approve'] = sprintf( '<a class="submitapprove" href="%1$s">%2$s</a>', esc_url( $url ), esc_html__( 'Approve', 'wp-approve-user' ) );
+			}
+
+			if ( 1 === intval( $user_object->user_status ) ) {
+				$url = wp_nonce_url(
+					add_query_arg(
+						array(
+							'action' => 'wpau_decline',
+							'user'   => $user_object->ID,
+							'role'   => $this->get_role(),
+						),
+						$url
+					),
+					'wpau-decline-users'
+				);
+
+				$actions['wpau-decline delete'] = sprintf( '<a class="submitdecline" href="%1$s">%2$s</a>', esc_url( $url ), esc_html__( 'Decline', 'wp-approve-user' ) );
 			}
 		}
 
@@ -431,6 +473,33 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	}
 
 	/**
+	 * Updates user data to decline user.
+	 *
+	 * @author Konstantin Obenland
+	 * @since  1.1 - 12.02.2012
+	 * @access public
+	 */
+	public function admin_action_wpau_decline() {
+		check_admin_referer( 'wpau-decline-users' );
+		$this->decline();
+	}
+
+	/**
+	 * Bulkupdates user data to decline users.
+	 *
+	 * @author Konstantin Obenland
+	 * @since  1.1 - 12.02.2012
+	 * @access public
+	 */
+	public function admin_action_wpau_bulk_decline() {
+		$action = 'users-network' === get_current_screen()->id ? 'bulk-users-network' : 'bulk-users';
+		check_admin_referer( $action );
+
+		$this->set_up_role_context();
+		$this->decline();
+	}	
+
+	/**
 	 * Updates user_meta to unapprove user.
 	 *
 	 * @author Konstantin Obenland
@@ -476,6 +545,11 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			case 'wpau-approved':
 				/* translators: Number of users. */
 				$message = esc_html( _n( '%d User approved.', '%d users approved.', $count, 'wp-approve-user' ) );
+				break;
+
+			case 'wpau-declined':
+				/* translators: Number of users. */
+				$message = esc_html( _n( '%d User declined.', '%d users declined.', $count, 'wp-approve-user' ) );
 				break;
 
 			case 'wpau-unapproved':
@@ -887,6 +961,56 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 				array(
 					'action' => 'wpau_update',
 					'update' => 'wpau-approved',
+					'count'  => count( $user_ids ),
+					'role'   => $this->get_role(),
+				),
+				$url
+			)
+		);
+		exit();
+	}
+
+	/**
+	 * Updates user data to decline user.
+	 *
+	 * @author Konstantin Obenland
+	 * @since  1.1 - 12.02.2012
+	 * @access protected
+	 */
+	protected function decline() {
+		list( $user_ids, $url ) = $this->check_user();
+
+		foreach ( (array) $user_ids as $id ) {
+			$id = (int) $id;
+
+			if ( ! current_user_can( 'edit_user', $id ) ) {
+				wp_die(
+					esc_html__( 'You can&#8217;t edit that user.' ),
+					'',
+					array(
+						'back_link' => true,
+					)
+				);
+			}
+
+			wp_update_user(
+				array(
+					'ID'          => $id,
+					'user_status' => 2,
+				)
+			);
+
+			// Legacy
+			update_user_meta( $id, 'wp-approve-user-block', true );
+
+			do_action( 'wpau_decline', $id );
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'action' => 'wpau_update',
+					'update' => 'wpau-declined',
 					'count'  => count( $user_ids ),
 					'role'   => $this->get_role(),
 				),
