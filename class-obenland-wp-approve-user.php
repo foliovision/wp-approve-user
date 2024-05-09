@@ -257,7 +257,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput
 		$role = empty( $query->query_vars['role'] ) && isset( $_REQUEST['role'] ) ? $_REQUEST['role'] : $query->query_vars['role'];
 
-		if ( in_array( $role, array( 'wpau_unapproved', 'wpau_declined' ) ) ) {
+		// Detect the "Unapproved" and "Declined" views of wp-admin -> Users and adjust the query accordingly.
+		if ( empty( $query->query_vars['user_status'] ) && in_array( $role, array( 'wpau_unapproved', 'wpau_declined' ) ) ) {
 			// Discard the standard Role query.
 			$query->query_vars['role']        = '';
 
@@ -1239,6 +1240,7 @@ Contact details',
 	protected function get_role() {
 		$roles   = array_keys( get_editable_roles() );
 		$roles[] = 'wpau_unapproved';
+		$roles[] = 'wpau_declined';
 		$role    = false;
 
 		if ( isset( $_REQUEST['role'] ) && in_array( $_REQUEST['role'], $roles, true ) ) {
