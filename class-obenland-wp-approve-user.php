@@ -158,11 +158,10 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	 */
 	public function admin_print_scripts_users_php() {
 		$plugin_data = get_plugin_data( __FILE__, false, false );
-		$suffix      = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 
 		wp_enqueue_script(
 			$this->textdomain,
-			plugins_url( "/js/{$this->textdomain}{$suffix}.js", __FILE__ ),
+			plugins_url( "/js/{$this->textdomain}.js", __FILE__ ),
 			array( 'jquery' ),
 			$plugin_data['Version'],
 			true
