@@ -65,20 +65,6 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			$this->default_options()
 		);
 
-		if ( is_admin() ) {
-			$args = array(
-				'meta_key'   => 'wp-approve-user', //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
-				'meta_value' => false, //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
-				'fields'     => 'all_with_meta',   // Get only required fields
-			);
-
-			if ( is_multisite() ) {
-				$args['blog_id'] = is_network_admin() ? 0 : get_current_blog_id();
-			}
-
-			$this->unapproved_users = get_users( $args );
-		}
-
 		load_plugin_textdomain( 'wp-approve-user', false, 'wp-approve-user/lang' );
 
 		$this->hook( 'plugins_loaded' );
@@ -143,6 +129,21 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			$this->hook( 'network_admin_menu', 'admin_menu' );
 		} else {
 			$this->hook( 'admin_menu' );
+		}
+
+		// Allow wp_user table user_status field to be updated with wp_update_user() call.
+		$this->hook( 'wp_pre_insert_user_data' );
+
+		if ( is_admin() ) {
+			$args = array(
+				'user_status' => 1
+			);
+
+			if ( is_multisite() ) {
+				$args['blog_id'] = is_network_admin() ? 0 : get_current_blog_id();
+			}
+
+			$this->unapproved_users = get_users( $args );
 		}
 	}
 
@@ -237,13 +238,19 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		$role = empty( $query->query_vars['role'] ) && isset( $_REQUEST['role'] ) ? $_REQUEST['role'] : $query->query_vars['role'];
 
 		if ( 'wpau_unapproved' === $role ) {
-			unset( $query->query_vars['meta_query'] );
-			$query->query_vars['role']       = '';
-			$query->query_vars['meta_key']   = 'wp-approve-user'; //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
-			$query->query_vars['meta_value'] = false; //phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+			// Discard the standard Role query.
+			$query->query_vars['role']        = '';
+			$query->query_vars['user_status'] = 1;
 
+			// Parse the query again while avoiding the endless loop.
 			remove_filter( 'pre_user_query', array( $this, 'pre_user_query' ) );
 			$query->prepare_query();
+			add_filter( 'pre_user_query', array( $this, 'pre_user_query' ) );
+		}
+
+		// Allow get_users() to search by user_status field.
+		if ( ! empty( $query->query_vars['user_status'] ) ) {
+			$query->query_where .= ' AND user_status = ' . intval( $query->query_vars['user_status'] );
 		}
 	}
 
@@ -264,7 +271,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			$site_id = isset( $_REQUEST['id'] ) ? intval( $_REQUEST['id'] ) : 0;
 			$url     = 'site-users-network' === get_current_screen()->id ? add_query_arg( array( 'id' => $site_id ), 'site-users.php' ) : 'users.php';
 
-			if ( get_user_meta( $user_object->ID, 'wp-approve-user', true ) ) {
+			if ( 0 === intval( $user_object->user_status ) ) {
+
 				$url = wp_nonce_url(
 					add_query_arg(
 						array(
@@ -278,7 +286,11 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 
 				$actions['wpau-unapprove'] = sprintf( '<a class="submitunapprove" href="%1$s">%2$s</a>', esc_url( $url ), esc_html__( 'Unapprove', 'wp-approve-user' ) );
 
-			} else {
+			} else if ( 1 === intval( $user_object->user_status ) ) {
+
+				// Remove the reset password link as it does not make sense for unapproved or declined users.
+				unset( $actions['resetpassword'] );
+
 				$url = wp_nonce_url(
 					add_query_arg(
 						array(
@@ -341,8 +353,21 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	 * @param int $id User ID.
 	 */
 	public function user_register( $id ) {
-		update_user_meta( $id, 'wp-approve-user', current_user_can( 'create_users' ) );
+		$is_user_created_by_admin = current_user_can( 'create_users' );
+
+		if ( ! $is_user_created_by_admin ) {
+			wp_update_user(
+				array(
+					'ID'          => $id,
+					'user_status' => 1,
+				)
+			);
+		}
+
 		update_user_meta( $id, 'wp-approve-user-new-registration', true );
+
+		// Legacy
+		update_user_meta( $id, 'wp-approve-user', $is_user_created_by_admin );
 	}
 
 	/**
@@ -379,7 +404,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	}
 
 	/**
-	 * Updates user_meta to approve user.
+	 * Updates user data to approve user.
 	 *
 	 * @author Konstantin Obenland
 	 * @since  1.1 - 12.02.2012
@@ -391,7 +416,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	}
 
 	/**
-	 * Bulkupdates user_meta to approve user.
+	 * Bulkupdates user data to approve users.
 	 *
 	 * @author Konstantin Obenland
 	 * @since  1.1 - 12.02.2012
@@ -822,7 +847,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	}
 
 	/**
-	 * Updates user_meta to approve user.
+	 * Updates user data to approve user.
 	 *
 	 * @author Konstantin Obenland
 	 * @since  1.1 - 12.02.2012
@@ -844,7 +869,16 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 				);
 			}
 
+			wp_update_user(
+				array(
+					'ID'          => $id,
+					'user_status' => 0,
+				)
+			);
+
+			// Legacy
 			update_user_meta( $id, 'wp-approve-user', true );
+
 			do_action( 'wpau_approve', $id );
 		}
 
@@ -885,7 +919,16 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 				);
 			}
 
+			wp_update_user(
+				array(
+					'ID'          => $id,
+					'user_status' => 1,
+				)
+			);
+
+			// Legacy
 			update_user_meta( $id, 'wp-approve-user', false );
+			
 			do_action( 'wpau_unapprove', $id );
 		}
 
@@ -1086,6 +1129,14 @@ Contact details',
 
 	// Make sure any user registered through EDD is  marked as approved
 	public function edd_insert_user( $user_id ) {
+		wp_update_user(
+			array(
+				'ID'          => $user_id,
+				'user_status' => 0,
+			)
+		);
+
+		// Legacy
 		update_user_meta( $user_id, 'wp-approve-user', true );
 	}
 
@@ -1125,5 +1176,12 @@ Contact details',
 		_deprecated_function( __FUNCTION__, '10', 'wp_approve_user_activate' );
 
 		wp_approve_user_activate();
+	}
+
+	public function wp_pre_insert_user_data( $data, $update, $user_id, $userdata ) {
+		if ( isset( $userdata[ 'user_status' ] ) ) {
+			$data[ 'user_status' ] = $userdata[ 'user_status' ];
+		}
+		return $data;
 	}
 }
