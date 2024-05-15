@@ -398,18 +398,10 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		$is_user_created_by_admin = current_user_can( 'create_users' );
 
 		if ( ! $is_user_created_by_admin ) {
-			wp_update_user(
-				array(
-					'ID'          => $id,
-					'user_status' => 1,
-				)
-			);
+			$this->do_unapprove( $id );
 		}
 
 		update_user_meta( $id, 'wp-approve-user-new-registration', true );
-
-		// Legacy
-		update_user_meta( $id, 'wp-approve-user', $is_user_created_by_admin );
 	}
 
 	/**
@@ -943,15 +935,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 				);
 			}
 
-			wp_update_user(
-				array(
-					'ID'          => $id,
-					'user_status' => 0,
-				)
-			);
-
-			// Legacy
-			update_user_meta( $id, 'wp-approve-user', true );
+			$this->do_approve( $id );
 
 			do_action( 'wpau_approve', $id );
 		}
@@ -1020,6 +1004,30 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		exit();
 	}
 
+	protected function do_approve( $user_id ) {
+		wp_update_user(
+			array(
+				'ID'          => $user_id,
+				'user_status' => 0,
+			)
+		);
+
+		// Legacy
+		update_user_meta( $user_id, 'wp-approve-user', true );
+	}
+
+	protected function do_unapprove( $user_id ) {
+		wp_update_user(
+			array(
+				'ID'          => $user_id,
+				'user_status' => 1,
+			)
+		);
+
+		// Legacy
+		update_user_meta( $user_id, 'wp-approve-user', false );
+	}
+
 	/**
 	 * Updates user_meta to unapprove user.
 	 *
@@ -1043,16 +1051,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 				);
 			}
 
-			wp_update_user(
-				array(
-					'ID'          => $id,
-					'user_status' => 1,
-				)
-			);
+			$this->do_unapprove( $id );
 
-			// Legacy
-			update_user_meta( $id, 'wp-approve-user', false );
-			
 			do_action( 'wpau_unapprove', $id );
 		}
 
@@ -1254,15 +1254,7 @@ Contact details',
 
 	// Make sure any user registered through EDD is  marked as approved
 	public function edd_insert_user( $user_id ) {
-		wp_update_user(
-			array(
-				'ID'          => $user_id,
-				'user_status' => 0,
-			)
-		);
-
-		// Legacy
-		update_user_meta( $user_id, 'wp-approve-user', true );
+		$this->do_approve( $user_id );
 	}
 
 	// Make sure any user registered through EDD is not marked as unapproved
