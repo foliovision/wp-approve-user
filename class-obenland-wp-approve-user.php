@@ -119,6 +119,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 
 		$this->hook( 'edd_insert_user' );
 		$this->hook( 'edd_insert_user_args' );
+		$this->hook( 'edd_checkout_user_error_checks' );
 
 		if ( is_admin() ) {
 			$this->hook( 'views_users' );
@@ -1261,6 +1262,19 @@ Contact details',
 	public function edd_insert_user_args( $args ) {
 		remove_action( 'user_register', array( $this, 'user_register' ) );
 		return $args;
+	}
+
+	// What if the user is already registered? We need to approve the user.
+	public function edd_checkout_user_error_checks( $user, $valid_data, $post ) {
+		file_put_contents( 'edd_checkout_user_error_checks.log', date('r') . ":\n" . var_export( func_get_args(), true ) . "\n\n", FILE_APPEND );
+		if ( ! empty( $valid_data['guest_user_data']['user_email'] ) ) {
+			$user = get_user_by( 'email', sanitize_email( $valid_data['guest_user_data']['user_email'] ) );
+			if ( $user ) {
+				$this->do_approve( $user->ID );
+
+				do_action( 'wpau_approve', $user->ID );
+			}
+		}
 	}
 
 	/**
