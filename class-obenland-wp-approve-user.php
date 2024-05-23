@@ -121,6 +121,10 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		$this->hook( 'edd_insert_user_args' );
 		$this->hook( 'edd_checkout_user_error_checks' );
 
+		// FV bbPress Tweaks
+		add_action( 'bbp_approve_reply_handler', array( $this, 'bbpress_moderation_approved' ), 10, 3 );
+		add_action( 'bbp_approve_topic_handler', array( $this, 'bbpress_moderation_approved' ), 10, 3 );
+
 		if ( is_admin() ) {
 			$this->hook( 'views_users' );
 			$this->hook( 'views_users-network', 'views_users' );
@@ -1251,6 +1255,17 @@ Contact details',
 		return $role;
 
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput
+	}
+
+	public function bbpress_moderation_approved( $success, $post_data, $action ) {
+		if ( $success && ! empty(  $post_data['ID'] ) ) {
+			$topic_or_reply_id = $post_data['ID'];
+
+			$topic_or_reply = get_post( $topic_or_reply_id );
+			$user_id = $topic_or_reply->post_author;
+
+			$this->do_approve( $user_id );
+		}
 	}
 
 	// Make sure any user registered through EDD is  marked as approved
