@@ -1034,6 +1034,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 
 		// Legacy
 		update_user_meta( $user_id, 'wp-approve-user', false );
+
+		WP_Session_Tokens::get_instance( $user_id )->destroy_all();
 	}
 
 	/**
