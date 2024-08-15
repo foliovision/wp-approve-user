@@ -117,6 +117,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 		$this->hook( 'delete_user' );
 		$this->hook( 'admin_init' );
 
+		$this->hook( 'edd_complete_purchase' );
 		$this->hook( 'edd_insert_user' );
 		$this->hook( 'edd_insert_user_args' );
 		$this->hook( 'edd_checkout_user_error_checks' );
@@ -1266,6 +1267,31 @@ Contact details',
 
 			$this->do_approve( $user_id );
 		}
+	}
+
+	public function edd_complete_purchase( $payment_id ) {
+		$payment = new EDD_Payment( $payment_id );
+		$user_id = $payment->user_id > 0 ? $payment->user_id : 0;
+
+		if( !$user_id ) {
+			$payment_meta = edd_get_payment_meta( $payment_id );
+
+			$user_info = $payment_meta['user_info'];
+
+			if( $user_info && !isset($user_info['id']) || $user_info['id'] == 0 ) { //  user ID is zero when using EDD Manual Purchases
+				if( $objUser = get_user_by('email', $user_info['email']) ) {
+					$user_id = $objUser->ID;
+				}
+			}
+
+				if( !$user_info || !isset($user_info['id']) || $user_info['id'] == 0 ) { //  user ID is zero when using EDD Manual Purchases
+				if( $objUser = get_user_by('email', $payment_meta['email']) ) {
+					$user_id = $objUser->ID;
+				}
+			}
+		}
+
+		$this->do_approve( $user_id );
 	}
 
 	// Make sure any user registered through EDD is  marked as approved
