@@ -765,7 +765,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	 * @access public
 	 */
 	public function section_description_cb() {
-		$tags = array( 'USERNAME', 'BLOG_TITLE', 'BLOG_URL', 'LOGINLINK' );
+		$tags = array( 'USERNAME', 'USEREMAIL', 'BLOG_TITLE', 'BLOG_URL', 'LOGINLINK' );
 		if ( is_multisite() ) {
 			$tags[] = 'SITE_NAME';
 		}
@@ -1148,6 +1148,7 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			'BLOG_URL'   => home_url(),
 			'LOGINLINK'  => wp_login_url(),
 			'USERNAME'   => $user->user_nicename,
+			'USEREMAIL'  => $user->user_email,
 			'PASSWORD'   => $password
 		);
 
