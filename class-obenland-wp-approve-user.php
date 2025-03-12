@@ -1269,6 +1269,8 @@ Contact details',
 			$user_id = $topic_or_reply->post_author;
 
 			$this->do_approve( $user_id );
+
+			do_action( 'wpau_approve', $user_id );
 		}
 	}
 
