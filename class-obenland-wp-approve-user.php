@@ -144,7 +144,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 
 		if ( is_admin() ) {
 			$args = array(
-				'user_status' => 1
+				'user_status' => 1,
+				'fields'      => 'ID',
 			);
 
 			if ( is_multisite() ) {
@@ -228,7 +229,8 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			);
 
 			$args = array(
-				'user_status' => 2
+				'user_status' => 2,
+				'fields'      => 'ID',
 			);
 
 			if ( is_multisite() ) {
