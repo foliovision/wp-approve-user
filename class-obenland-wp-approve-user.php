@@ -383,14 +383,19 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 			return $userdata;
 		}
 
-		if ( get_user_meta( $userdata->ID, 'wp-approve-user', true ) ) {
-			return $userdata;
+		// Is the user unapproved or declined?
+		if (
+			1 === intval( $userdata->user_status ) ||
+			2 === intval( $userdata->user_status )
+		) {
+
+			return new WP_Error(
+				'wpau_confirmation_error',
+				wp_kses_post( __( '<strong>ERROR:</strong> Your account has to be confirmed by an administrator before you can log in.', 'wp-approve-user' ) )
+			);
 		}
 
-		return new WP_Error(
-			'wpau_confirmation_error',
-			wp_kses_post( __( '<strong>ERROR:</strong> Your account has to be confirmed by an administrator before you can log in.', 'wp-approve-user' ) )
-		);
+		return $userdata;
 	}
 
 	/**
