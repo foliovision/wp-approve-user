@@ -427,7 +427,10 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	 * @param int $user_id ID of the newly registered user.
 	 */
 	public function register_new_user( $user_id ) {
-		if ( ! get_user_meta( $user_id, 'wp-approve-user', true ) ) {
+
+		$user = new WP_User( $user_id );
+
+		if ( 0 !== intval( $user->user_status ) ) {
 			remove_action( 'register_new_user', 'wp_send_new_user_notifications' );
 			add_action( 'register_new_user', 'wp_new_user_notification' );
 		}
@@ -888,10 +891,10 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 	 */
 	public function delete_user( $user_id ) {
 		$is_new_registration = get_user_meta( $user_id, 'wp-approve-user-new-registration', true );
-		$is_approved         = get_user_meta( $user_id, 'wp-approve-user', true );
+		$user                = new WP_User( $user_id );
 
-		if ( $is_new_registration && ! $is_approved && $this->options['wpau-send-unapprove-email'] ) {
-			$user     = new WP_User( $user_id );
+		if ( $is_new_registration && 0 !== intval( $user->user_status ) && $this->options['wpau-send-unapprove-email'] ) {
+			
 			$blogname = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
 
 			// Send mail.
