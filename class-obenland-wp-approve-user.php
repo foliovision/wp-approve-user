@@ -743,14 +743,6 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 							?>
 						</form>
 					</div>
-					<div id="postbox-container-1">
-						<div id="side-info-column">
-							<?php
-							$this->donate_box();
-							$this->feed_box();
-							?>
-						</div>
-					</div>
 				</div>
 			</div>
 		</div>
