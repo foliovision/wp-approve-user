@@ -1,11 +1,10 @@
 <?php
 /**
- * Plugin Name: WP Approve User
- * Plugin URI:  http://en.wp.obenland.it/wp-approve-user/#utm_source=wordpress&utm_medium=plugin&utm_campaign=wp-approve-user
+ * Plugin Name: FV Approve User
+ * Plugin URI:  https://foliovision.com
  * Description: Adds action links to user table to approve or unapprove user registrations.
  * Version:     12
- * Author:      Konstantin Obenland
- * Author URI:  http://en.wp.obenland.it/#utm_source=wordpress&utm_medium=plugin&utm_campaign=wp-approve-user
+ * Author:      Konstantin Obenland and Foliovision
  * Text Domain: wp-approve-user
  * Domain Path: /lang
  * License:     GPLv2
