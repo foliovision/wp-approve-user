@@ -154,6 +154,30 @@ class Obenland_Wp_Approve_User extends Obenland_Wp_Plugins_V5 {
 
 			$this->unapproved_users = get_users( $args );
 		}
+
+		// Show approval status on wp-admin User screens
+		$this->hook( 'personal_options' );
+
+		// Show approval status on EDD Customer screen
+		add_action(
+			'edd_customer_before_stats',
+			function( $customer ) {
+				$user = get_user( $customer->user_id );
+				$this->personal_options( $user );
+			}
+		);
+
+		// Show approval status on EDD Order screen
+		add_action(
+			'edd_view_order_details_payment_meta_after',
+			function( $order_id ) {
+				$order = new EDD_Payment( $order_id );
+				if ( $order ) {
+					$user = get_user( $order->user_id );
+					$this->personal_options( $user );
+				}
+			}
+		);
 	}
 
 	/**
@@ -1321,7 +1345,7 @@ Contact details',
 
 	// What if the user is already registered? We need to approve the user.
 	public function edd_checkout_user_error_checks( $user, $valid_data, $post ) {
-		file_put_contents( 'edd_checkout_user_error_checks.log', date('r') . ":\n" . var_export( func_get_args(), true ) . "\n\n", FILE_APPEND );
+		// file_put_contents( 'edd_checkout_user_error_checks.log', date('r') . ":\n" . var_export( func_get_args(), true ) . "\n\n", FILE_APPEND );
 		if ( ! empty( $valid_data['guest_user_data']['user_email'] ) ) {
 			$user = get_user_by( 'email', sanitize_email( $valid_data['guest_user_data']['user_email'] ) );
 			if ( $user ) {
@@ -1353,6 +1377,31 @@ Contact details',
 		}
 
 		return $has_remaining;
+	}
+
+	public function personal_options( $profile_user ) {
+		if ( $profile_user && current_user_can( 'remove_users' ) ) {
+			$color       = false;
+			$show_status = false;
+
+			if ( 1 === absint( $profile_user->user_status ) ) {
+				$show_status = 'is pending admin approval';
+				$color       = '#FFFFE0';
+
+			} elseif ( 2 === absint( $profile_user->user_status ) ) {
+				$show_status = 'was declined by admin';
+				$color       = '#FFE0E0';
+			}
+
+			if ( $show_status ) {
+				printf(
+					"<p style='background-color: %s; padding: 10px; border-radius: 5px'>This user <a href='%s'>%s</a>.</p>",
+					$color,
+					add_query_arg( 's', $profile_user->user_email, admin_url( 'users.php') ),
+					$show_status
+				);
+			}
+		}
 	}
 
 	/**
